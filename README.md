@@ -1,66 +1,141 @@
 # Vizo
 
-基于 Electron-Vite + React + TypeScript + Tailwind CSS + Shadcn/UI 的 Windows 桌面应用。
+Vizo 是一款面向 Windows 的 AI 生图 / 改图桌面工具，适合把日常的提示词创作、参考图管理、项目整理和生成记录放到一个本地应用里完成。
 
-## 环境要求
+它基于 Electron、React 和 TypeScript 构建，支持接入官方 Gemini 接口，也支持自定义兼容接口地址。你可以把它理解成一个更适合长期使用的本地 AI 出图工作台，而不是一次性网页工具。
+
+## 适合谁用
+
+- 想在桌面端长期整理 AI 出图项目的人
+- 需要频繁切换 API 配置、模型和参数的人
+- 想保留提示词、历史记录、输入图和输出图的人
+- 希望把图片素材和生成流程管理得更清楚的人
+
+## 主要功能
+
+- AI 生图 / 改图
+  - 支持文本提示词
+  - 支持上传参考图参与生成
+  - 支持输出数量、比例、分辨率等参数设置
+
+- 多配置管理
+  - 支持保存多个 API 配置
+  - 支持 API Key、接口地址、模型名覆盖
+  - 支持连接校验，方便快速确认配置是否可用
+
+- 项目管理
+  - 支持创建多个项目
+  - 每个项目可独立管理历史记录和提示词预设
+  - 适合按主题、客户、角色或场景分类整理
+
+- 前置提示词预设
+  - 可为项目保存多条前置提示词
+  - 提交生成时可按选择结果自动拼接到主提示词前面
+  - 适合固定画风、角色设定、镜头语言等场景
+
+- 历史记录与复用
+  - 自动保存生成历史
+  - 保留输入图、输出图、提示词、参数和所用配置
+  - 便于回看、复用和持续迭代
+
+- 文件库
+  - 内置输入 / 输出图片文件库面板
+  - 支持拖拽导入、刷新和快速查看
+  - 更方便整理参考图与结果图
+
+- 本地目录与代理设置
+  - 支持自定义输入目录和输出目录
+  - 支持系统代理或手动代理配置
+  - 更适合国内网络环境和长期本地归档
+
+## 数据说明
+
+- 软件配置、项目设置、前置提示词和历史记录默认保存在本机用户目录
+- 输入图和输出图保存在本地目录中，不会自动上传到 GitHub
+- API Key 由用户自行填写并保存在本地
+
+如果你只是下载源码或安装包，本项目本身不会附带作者的个人配置和缓存数据。
+
+## 下载与安装
+
+发布版安装包会放在仓库的 Releases 页面。
+
+- 进入仓库的 `Releases`
+- 下载最新的 `Vizo-x.y.z-Setup.exe`
+- 双击安装后即可使用
+
+如果你是在 GitHub 上浏览本项目，通常可以从仓库右侧的 `Releases` 区域进入下载页。
+
+## 使用流程
+
+1. 添加 API 配置
+2. 选择模型与生成参数
+3. 新建或选择一个项目
+4. 输入提示词，按需附加前置提示词
+5. 上传参考图或直接开始生成
+6. 在历史记录和文件库中查看与整理结果
+
+## 技术栈
+
+- Electron
+- React
+- TypeScript
+- Tailwind CSS
+- Radix UI / shadcn 风格组件
+
+## 本地开发
+
+环境要求：
 
 - Node.js 18+
-- npm 或 pnpm
+- npm
 
-## 安装与运行
+安装依赖：
 
 ```bash
-# 安装依赖
 npm install
+```
 
-# 若 Electron 下载超时，可设置镜像后重试：
-# Windows: set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
-# 然后再次 npm install
+如果 Electron 下载较慢，可以先设置镜像再执行安装：
 
-# 启动开发环境
+```bash
+set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+npm install
+```
+
+启动开发环境：
+
+```bash
 npm run dev
 ```
 
-## 项目结构
+## 打包
 
-```
-Vizo/
-├── src/
-│   ├── main/              # Electron 主进程
-│   │   └── index.ts        # 主进程入口
-│   ├── preload/            # 预加载脚本
-│   │   ├── index.ts        # preload 入口，IPC 桥接
-│   │   └── index.d.ts      # 类型声明
-│   └── renderer/           # 渲染进程 (React)
-│       ├── index.html      # HTML 入口
-│       └── src/
-│           ├── main.tsx    # React 入口
-│           ├── App.tsx     # 根组件
-│           ├── index.css   # 全局样式
-│           ├── components/
-│           │   ├── ui/     # Shadcn/UI 基础组件
-│           │   └── layout/ # 布局组件
-│           └── lib/        # 工具函数
-├── electron.vite.config.ts
-├── tailwind.config.js
-├── postcss.config.js
-└── package.json
+构建 Windows 安装包：
+
+```bash
+npm run build:win
 ```
 
-## 窗口入口与 IPC
+构建产物默认输出到 `release/` 目录。
 
-| 类型 | 文件路径 |
-|------|----------|
-| 主进程入口 | `src/main/index.ts` |
-| 渲染进程入口 | `src/renderer/index.html` → `src/renderer/src/main.tsx` |
-| Preload 脚本 | `src/preload/index.ts` |
-| IPC 桥接 | `src/preload/index.ts` 暴露 `window.electronAPI` |
+## 发布版本
 
-## 布局与组件对应
+本项目已经配置 GitHub Actions 自动发布流程。
 
-| 区域 | 组件 | 用途 |
-|------|------|------|
-| 左侧 | `LeftPanel` | API、URL、验证、比例、分辨率等配置 |
-| 中间上方 | `HistoryArea` | 历史记录展示 |
-| 中间下方 | `InputArea` | 输入区 |
-| 右侧 | `RightPanel` | 项目列表、新建项目 |
+你只需要：
+
+1. 修改 `package.json` 里的版本号
+2. 新增对应版本的更新说明文件，例如 `docs/releases/v0.1.13.md`
+3. 提交代码并打 tag
+4. 推送到 GitHub
+
+详细说明见：
+
+- [docs/RELEASING.md](docs/RELEASING.md)
+
+## 说明
+
+- 当前主要面向 Windows 桌面使用
+- 首次安装时若出现“未知发布者”提示，属于未签名安装包的常见现象
+- 如需正式商用分发，建议进一步接入代码签名
