@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { HISTORY_IMAGE_TYPE } from '@/hooks/use-drop-zone'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,7 @@ interface LibraryImageItem {
   path: string
   name: string
   displayUrl: string
+  thumbnailUrl?: string
   relativePath: string
   modifiedAt: number
   createdAt: number
@@ -26,7 +27,40 @@ interface LibraryScopeCache {
 }
 
 const HIDDEN_STORAGE_KEY = 'vizo.hidden-library-files.v1'
-const REFRESH_INTERVAL_MS = 4000
+
+function areLibraryItemsEqual(left: LibraryImageItem[], right: LibraryImageItem[]): boolean {
+  if (left === right) {
+    return true
+  }
+
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((item, index) => {
+    const nextItem = right[index]
+    return (
+      item.path === nextItem.path &&
+      item.displayUrl === nextItem.displayUrl &&
+      item.thumbnailUrl === nextItem.thumbnailUrl &&
+      item.relativePath === nextItem.relativePath &&
+      item.modifiedAt === nextItem.modifiedAt &&
+      item.createdAt === nextItem.createdAt
+    )
+  })
+}
+
+function isLibraryStateEqual(left: LibraryScopeCache | undefined, right: LibraryScopeCache): boolean {
+  if (!left) {
+    return false
+  }
+
+  return (
+    left.directory === right.directory &&
+    left.error === right.error &&
+    areLibraryItemsEqual(left.items, right.items)
+  )
+}
 
 function normalizePath(filePath: string): string {
   return filePath.replace(/\\/g, '/').toLowerCase()
@@ -70,7 +104,7 @@ function getMimeType(filePath: string): string {
   return 'image/jpeg'
 }
 
-function FileLibraryItem({
+const FileLibraryItem = memo(function FileLibraryItem({
   item,
   onHide
 }: {
@@ -78,6 +112,11 @@ function FileLibraryItem({
   onHide: (path: string) => void
 }) {
   const [loadFailed, setLoadFailed] = useState(false)
+  const previewUrl = item.thumbnailUrl || item.displayUrl
+
+  useEffect(() => {
+    setLoadFailed(false)
+  }, [item.modifiedAt, item.path, previewUrl])
 
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
     const payload = JSON.stringify({ path: item.path })
@@ -104,11 +143,10 @@ function FileLibraryItem({
         </div>
       ) : (
         <img
-          src={item.displayUrl}
+          src={previewUrl}
           alt=""
           className="h-full w-full object-cover"
           draggable={false}
-          loading="lazy"
           decoding="async"
           onError={() => setLoadFailed(true)}
         />
@@ -140,7 +178,14 @@ function FileLibraryItem({
       </button>
     </div>
   )
-}
+},
+(previousProps, nextProps) =>
+  previousProps.item.path === nextProps.item.path &&
+  previousProps.item.displayUrl === nextProps.item.displayUrl &&
+  previousProps.item.thumbnailUrl === nextProps.item.thumbnailUrl &&
+  previousProps.item.modifiedAt === nextProps.item.modifiedAt &&
+  previousProps.onHide === nextProps.onHide
+)
 
 export function FileLibraryPanel() {
   const [scope, setScope] = useState<LibraryScope>('input')
@@ -155,15 +200,15 @@ export function FileLibraryPanel() {
 
   const applyLibraryState = useCallback((nextState: LibraryScopeCache) => {
     startTransition(() => {
-      setDirectory(nextState.directory)
-      setItems(nextState.items)
-      setError(nextState.error)
+      setDirectory((current) => (current === nextState.directory ? current : nextState.directory))
+      setItems((current) => (areLibraryItemsEqual(current, nextState.items) ? current : nextState.items))
+      setError((current) => (current === nextState.error ? current : nextState.error))
       setLoading(false)
     })
   }, [])
 
   const refreshItems = useCallback(
-    async (targetScope: LibraryScope, options?: { silent?: boolean }) => {
+    async (targetScope: LibraryScope, options?: { silent?: boolean; force?: boolean }) => {
       const requestId = requestIdRef.current + 1
       requestIdRef.current = requestId
 
@@ -172,7 +217,9 @@ export function FileLibraryPanel() {
       }
 
       try {
-        const result = await window.electronAPI.listLibraryImages(targetScope)
+        const result = await window.electronAPI.listLibraryImages(targetScope, {
+          force: options?.force
+        })
         if (requestIdRef.current !== requestId) {
           return
         }
@@ -181,6 +228,14 @@ export function FileLibraryPanel() {
           directory: result.directory,
           items: result.items ?? [],
           error: result.success ? '' : result.error || '读取目录失败'
+        }
+
+        const previousState = cacheRef.current[targetScope]
+        if (isLibraryStateEqual(previousState, nextState)) {
+          if (!options?.silent) {
+            setLoading(false)
+          }
+          return
         }
 
         cacheRef.current[targetScope] = nextState
@@ -194,6 +249,14 @@ export function FileLibraryPanel() {
           directory: '',
           items: [],
           error: cause instanceof Error ? cause.message : '读取目录失败'
+        }
+
+        const previousState = cacheRef.current[targetScope]
+        if (isLibraryStateEqual(previousState, nextState)) {
+          if (!options?.silent) {
+            setLoading(false)
+          }
+          return
         }
 
         cacheRef.current[targetScope] = nextState
@@ -220,28 +283,23 @@ export function FileLibraryPanel() {
       (payload?: { scope?: LibraryScope }) => {
         if (payload?.scope && payload.scope !== scope) {
           if (payload.scope) {
-            void refreshItems(payload.scope, { silent: true })
+            void refreshItems(payload.scope, { silent: true, force: true })
           }
           return
         }
 
-        void refreshItems(scope, { silent: true })
+        void refreshItems(scope, { silent: true, force: true })
       }
     )
 
-    const interval = window.setInterval(() => {
-      void refreshItems(scope, { silent: true })
-    }, REFRESH_INTERVAL_MS)
-
     const handleWindowFocus = () => {
-      void refreshItems(scope, { silent: true })
+      void refreshItems(scope, { silent: true, force: true })
     }
 
     window.addEventListener('focus', handleWindowFocus)
 
     return () => {
       unsubscribe()
-      window.clearInterval(interval)
       window.removeEventListener('focus', handleWindowFocus)
     }
   }, [refreshItems, scope])
@@ -298,7 +356,7 @@ export function FileLibraryPanel() {
     }
 
     toast.success(`已导入 ${result.imported} 张图片`)
-    void refreshItems(scope, { silent: true })
+    void refreshItems(scope, { silent: true, force: true })
   }
 
   const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
@@ -341,7 +399,7 @@ export function FileLibraryPanel() {
         <button
           type="button"
           className="soft-toolbar-btn"
-          onClick={() => void refreshItems(scope)}
+          onClick={() => void refreshItems(scope, { force: true })}
         >
           刷新
         </button>

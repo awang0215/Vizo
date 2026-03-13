@@ -16,6 +16,7 @@ export function HistoryArea() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
   const prevGeneratingKey = useRef<string>('')
+  const initialScrollKeyRef = useRef<string>('')
 
   const visibleGeneratingRecords = generatingRecords.filter(
     (record) =>
@@ -26,6 +27,12 @@ export function HistoryArea() {
   const generatingSignature = visibleGeneratingRecords
     .map((record) => `${record.id}-${record.successCount + record.failedCount}-${record.status}`)
     .join('|')
+  const historySignature = records
+    .map((record) => `${record.id}-${record.createdAt}`)
+    .join('|')
+  const showProjectEmptyState = !selectedProjectId && visibleGeneratingRecords.length === 0
+  const showHistoryEmptyState =
+    Boolean(selectedProjectId) && records.length === 0 && visibleGeneratingRecords.length === 0
 
   const checkNearBottom = useCallback(() => {
     const element = scrollRef.current
@@ -34,6 +41,23 @@ export function HistoryArea() {
     const distanceFromBottom = element.scrollHeight - element.clientHeight - element.scrollTop
     setShowScrollToBottom(distanceFromBottom > BOTTOM_THRESHOLD)
   }, [])
+
+  const scrollToLatest = useCallback(
+    (behavior: ScrollBehavior = 'smooth') => {
+      const element = scrollRef.current
+      if (!element) return
+
+      element.scrollTo({
+        top: element.scrollHeight - element.clientHeight,
+        behavior
+      })
+
+      setTimeout(() => {
+        checkNearBottom()
+      }, behavior === 'smooth' ? 180 : 0)
+    },
+    [checkNearBottom]
+  )
 
   useEffect(() => {
     const element = scrollRef.current
@@ -45,6 +69,26 @@ export function HistoryArea() {
   }, [checkNearBottom, records.length, generatingSignature])
 
   useEffect(() => {
+    if (showProjectEmptyState || showHistoryEmptyState) {
+      initialScrollKeyRef.current = ''
+      return
+    }
+
+    const nextKey = `${selectedProjectId ?? ''}:${historySignature}`
+    if (initialScrollKeyRef.current === nextKey) {
+      return
+    }
+
+    initialScrollKeyRef.current = nextKey
+
+    const timer = setTimeout(() => {
+      scrollToLatest('auto')
+    }, 50)
+
+    return () => clearTimeout(timer)
+  }, [historySignature, scrollToLatest, selectedProjectId, showHistoryEmptyState, showProjectEmptyState])
+
+  useEffect(() => {
     if (!generatingSignature) {
       prevGeneratingKey.current = ''
       return
@@ -53,26 +97,13 @@ export function HistoryArea() {
     if (generatingSignature === prevGeneratingKey.current) return
 
     prevGeneratingKey.current = generatingSignature
-    const element = scrollRef.current
-    if (!element) return
 
     const timer = setTimeout(() => {
-      element.scrollTo({ top: element.scrollHeight - element.clientHeight, behavior: 'smooth' })
+      scrollToLatest('smooth')
     }, 50)
 
     return () => clearTimeout(timer)
-  }, [generatingSignature])
-
-  const scrollToLatest = () => {
-    const element = scrollRef.current
-    if (element) {
-      element.scrollTo({ top: element.scrollHeight - element.clientHeight, behavior: 'smooth' })
-    }
-  }
-
-  const showProjectEmptyState = !selectedProjectId && visibleGeneratingRecords.length === 0
-  const showHistoryEmptyState =
-    Boolean(selectedProjectId) && records.length === 0 && visibleGeneratingRecords.length === 0
+  }, [generatingSignature, scrollToLatest])
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -105,10 +136,10 @@ export function HistoryArea() {
         {showScrollToBottom && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
-              className={cn('gap-1 border border-border/80 bg-background/92 backdrop-blur')}
-              onClick={scrollToLatest}
+              className={cn('gap-1 border border-border/85 bg-white text-foreground shadow-[0_8px_18px_rgba(15,23,42,0.08)] hover:bg-white')}
+              onClick={() => scrollToLatest('smooth')}
             >
               <span className="text-xs">v</span>
               回到底部

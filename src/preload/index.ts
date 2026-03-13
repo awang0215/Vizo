@@ -32,7 +32,8 @@ const api = {
   showItemInFolder: (path: string) => ipcRenderer.invoke('file:showInFolder', path),
   saveFileAs: (path: string, defaultName?: string) =>
     ipcRenderer.invoke('file:saveAs', path, defaultName),
-  listLibraryImages: (scope: 'input' | 'output') => ipcRenderer.invoke('library:list', scope),
+  listLibraryImages: (scope: 'input' | 'output', options?: { force?: boolean }) =>
+    ipcRenderer.invoke('library:list', scope, options),
   importFilesToLibrary: (scope: 'input' | 'output', sourcePaths: string[]) =>
     ipcRenderer.invoke('library:import', scope, sourcePaths),
   startLibraryFileDrag: (path: string) => ipcRenderer.send('library:startDrag', path),

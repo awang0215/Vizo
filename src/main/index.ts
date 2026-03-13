@@ -287,7 +287,11 @@ ipcMain.handle('file:showInFolder', (_event, path: string) => showItemInFolder(p
 ipcMain.handle('file:saveAs', (_event, path: string, defaultName?: string) =>
   saveFileAs(path, defaultName)
 )
-ipcMain.handle('library:list', (_event, scope: 'input' | 'output') => listLibraryImages(scope))
+ipcMain.handle(
+  'library:list',
+  (_event, scope: 'input' | 'output', options?: { force?: boolean }) =>
+    listLibraryImages(scope, options)
+)
 ipcMain.handle('library:import', async (_event, scope: 'input' | 'output', sourcePaths: string[]) => {
   const result = await importFilesToLibrary(scope, sourcePaths)
 

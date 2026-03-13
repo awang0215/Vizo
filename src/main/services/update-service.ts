@@ -52,23 +52,27 @@ const COPY = {
   updateFailedMessage: '检查或下载更新时发生错误。',
   startDownloadFailed: '无法开始下载更新。',
   foundNewVersion: '发现新版本',
+  updateAvailableMessage: '检测到新版本，以下是本次更新内容。',
+  updateContent: '更新内容',
   updateNow: '立即更新',
   cancel: '取消',
   close: '关闭',
-  neverUpdate: '永不更新',
+  disableUpdate: '关闭更新',
   downloadUpdate: '下载更新',
   downloading: '正在下载更新...',
   downloadDetail: '下载完成后将自动退出并安装新版本。',
   installing: '下载完成，正在准备安装...',
   noReleaseNotes: '本次版本暂未提供更新说明。',
   unpackedUnsupported:
-    '当前正在使用未安装的解压版（win-unpacked），自动更新只在通过 Setup.exe 安装后的版本中可用。',
+    '当前正在使用未安装的解压版（win-unpacked），自动更新仅在通过 Setup.exe 安装后的版本中可用。',
   devUnsupported: '开发模式下不支持自动更新，请使用安装版测试。',
   platformUnsupported: '自动更新目前仅支持 Windows 安装版。',
   checkingInProgress: '正在检查更新，请稍候。',
   downloadingInProgress: '更新正在下载中，请稍候。',
   releaseArtifactsMissing:
     'GitHub Release 中还没有找到对应的 latest.yml。\n\n请先发布当前版本，并确保 Release 同时上传以下文件：\n- Setup.exe\n- Setup.exe.blockmap\n- latest.yml',
+  noPublishedReleases:
+    'GitHub Releases 当前为空，还没有可用于更新的发布版本。\n\n请先在 GitHub 上发布至少一个包含以下文件的正式 Release：\n- Setup.exe\n- Setup.exe.blockmap\n- latest.yml',
   networkError: '无法连接更新服务器，请检查网络或代理设置后重试。'
 } as const
 
@@ -179,13 +183,7 @@ function formatFriendlyUpdateError(error: unknown): string {
     /err_updater_no_published_versions/i.test(normalized) ||
     /err_updater_latest_version_not_found/i.test(normalized)
   ) {
-    return (
-      'GitHub Releases 当前为空，还没有可用于更新的发布版本。\n\n' +
-      '请先在 GitHub 上发布至少一个包含以下文件的正式 Release：\n' +
-      '- Setup.exe\n' +
-      '- Setup.exe.blockmap\n' +
-      '- latest.yml'
-    )
+    return COPY.noPublishedReleases
   }
 
   if (
@@ -207,7 +205,11 @@ function resetUpdaterState(): void {
   resetMainWindowProgress()
 }
 
-function handleUpdateFailure(error: unknown, shouldNotifyUser: boolean, message = COPY.updateFailedMessage): void {
+function handleUpdateFailure(
+  error: unknown,
+  shouldNotifyUser: boolean,
+  message = COPY.updateFailedMessage
+): void {
   const detail = formatFriendlyUpdateError(error)
   resetUpdaterState()
 
@@ -255,8 +257,8 @@ function bindAutoUpdaterEvents(): void {
     sendUpdateDialog({
       kind: 'available',
       title: COPY.foundNewVersion,
-      message: `检测到新版本 ${info.version}`,
-      detail: '更新内容如下',
+      message: COPY.updateAvailableMessage,
+      detail: COPY.updateContent,
       version: info.version,
       releaseNotes: normalizeReleaseNotes(info.releaseNotes),
       confirmText: COPY.updateNow,
@@ -344,7 +346,7 @@ export function getUpdateMenuTemplate(): Electron.MenuItemConstructorOptions {
     label: COPY.update,
     submenu: [
       {
-        label: COPY.neverUpdate,
+        label: COPY.disableUpdate,
         type: 'checkbox',
         checked: preferences.neverUpdate,
         click: (menuItem) => {
@@ -432,8 +434,7 @@ export async function checkForUpdates(source: UpdateCheckSource): Promise<void> 
   try {
     await autoUpdater.checkForUpdates()
   } catch (error) {
-    const shouldNotifyUser = source === 'manual'
-    handleUpdateFailure(error, shouldNotifyUser)
+    handleUpdateFailure(error, source === 'manual')
   }
 }
 

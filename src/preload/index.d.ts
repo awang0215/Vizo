@@ -106,6 +106,7 @@ export interface LibraryImageItem {
   path: string
   name: string
   displayUrl: string
+  thumbnailUrl?: string
   relativePath: string
   modifiedAt: number
   createdAt: number
@@ -184,7 +185,10 @@ export interface ElectronAPI {
     savedPath?: string
     error?: string
   }>
-  listLibraryImages: (scope: LibraryScope) => Promise<LibraryListResult>
+  listLibraryImages: (
+    scope: LibraryScope,
+    options?: { force?: boolean }
+  ) => Promise<LibraryListResult>
   importFilesToLibrary: (scope: LibraryScope, sourcePaths: string[]) => Promise<LibraryImportResult>
   startLibraryFileDrag: (path: string) => void
   on: (channel: string, callback: (...args: unknown[]) => void) => () => void
