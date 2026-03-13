@@ -48,6 +48,12 @@ jobs:
           "notes_path=$notesPath" >> $env:GITHUB_OUTPUT
           "has_notes=$($hasNotes.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
+      - name: Enable Windows Developer Mode
+        shell: pwsh
+        run: |
+          reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" /t REG_DWORD /f /v "AllowDevelopmentWithoutDevLicense" /d "1"
+          reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" /t REG_DWORD /f /v "AllowAllTrustedApps" /d "1"
+
       - name: Build Windows installer
         shell: pwsh
         run: |
