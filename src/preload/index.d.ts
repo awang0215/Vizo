@@ -173,6 +173,7 @@ export interface ElectronAPI {
   deleteHistoryRecord: (recordId: string) => Promise<DeleteRecordResult>
   readCacheFile: (path: string) => Promise<{ mimeType: string; base64: string } | null>
   copyImageToClipboard: (path: string) => Promise<{ success: boolean; error?: string }>
+  downloadUpdate: () => Promise<void>
   getOutputDir: () => Promise<string>
   getInputDir: () => Promise<string>
   loadProxyConfig: () => Promise<{ proxyMode: string; proxyHost: string; proxyPort: string }>

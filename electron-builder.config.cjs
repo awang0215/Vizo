@@ -23,6 +23,14 @@ module.exports = {
     buildResources: 'build'
   },
 
+  publish: [
+    {
+      provider: 'github',
+      owner: 'awang0215',
+      repo: 'Vizo'
+    }
+  ],
+
   files: [
     '!**/.vscode/*',
     '!.electron-user-data/**',
@@ -64,7 +72,7 @@ module.exports = {
     }),
     installerLanguages: ['zh_CN'],
     createDesktopShortcut: 'always',
-    createStartMenuShortcut: false,
+    createStartMenuShortcut: true,
     oneClick: false,
     allowToChangeInstallationDirectory: true,
     perMachine: false,

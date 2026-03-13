@@ -24,6 +24,7 @@ const api = {
   readCacheFile: (path: string) => ipcRenderer.invoke('cache:readFile', path),
   copyImageToClipboard: (path: string) =>
     ipcRenderer.invoke('clipboard:copyImage', path),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
   getOutputDir: () => ipcRenderer.invoke('output-dir:get'),
   getInputDir: () => ipcRenderer.invoke('input-dir:get'),
   loadProxyConfig: () => ipcRenderer.invoke('proxyConfig:load'),

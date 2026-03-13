@@ -4,6 +4,8 @@ import { MiddlePanel } from '@/components/layout/MiddlePanel'
 import { RightPanelV2 } from '@/components/layout/RightPanelV2'
 import { ImagePreviewModal } from '@/components/input/ImagePreviewModal'
 import { ProxySettingsDialog } from '@/components/ProxySettingsDialog'
+import { AboutDialog } from '@/components/app/AboutDialog'
+import { UpdateDialog, type UpdateDialogState } from '@/components/app/UpdateDialog'
 import { configStoreV2 } from '@/store/config-store-v2'
 import { projectStore } from '@/store/project-store'
 import { historyStore } from '@/store/history-store'
@@ -11,18 +13,39 @@ import { toast } from 'sonner'
 
 function App() {
   const [proxyDialogOpen, setProxyDialogOpen] = useState(false)
+  const [aboutDialogOpen, setAboutDialogOpen] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
+  const [updateDialogState, setUpdateDialogState] = useState<UpdateDialogState | null>(null)
 
   useEffect(() => {
     configStoreV2.load()
     void Promise.all([projectStore.load(), historyStore.load()])
+    void window.electronAPI
+      .getAppVersion()
+      .then((version) => setAppVersion(version))
+      .catch(() => setAppVersion(''))
   }, [])
 
   useEffect(() => {
     if (typeof window?.electronAPI?.on !== 'function') return
-    const unsub = window.electronAPI.on('proxy:openSettings', () => {
+
+    const unsubProxy = window.electronAPI.on('proxy:openSettings', () => {
       setProxyDialogOpen(true)
     })
-    return () => unsub()
+
+    const unsubAbout = window.electronAPI.on('app:openAbout', () => {
+      setAboutDialogOpen(true)
+    })
+
+    const unsubUpdateDialog = window.electronAPI.on('update:dialog', (payload: unknown) => {
+      setUpdateDialogState(payload as UpdateDialogState)
+    })
+
+    return () => {
+      unsubProxy()
+      unsubAbout()
+      unsubUpdateDialog()
+    }
   }, [])
 
   useEffect(() => {
@@ -69,6 +92,16 @@ function App() {
     }
   }, [])
 
+  const handleUpdateDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setUpdateDialogState(null)
+    }
+  }
+
+  const handleConfirmUpdate = async () => {
+    await window.electronAPI.downloadUpdate()
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
       <LeftPanelV2 />
@@ -76,6 +109,12 @@ function App() {
       <RightPanelV2 />
       <ImagePreviewModal />
       <ProxySettingsDialog open={proxyDialogOpen} onOpenChange={setProxyDialogOpen} />
+      <AboutDialog open={aboutDialogOpen} onOpenChange={setAboutDialogOpen} version={appVersion} />
+      <UpdateDialog
+        state={updateDialogState}
+        onOpenChange={handleUpdateDialogOpenChange}
+        onConfirmUpdate={handleConfirmUpdate}
+      />
     </div>
   )
 }

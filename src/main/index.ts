@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, Menu, nativeImage } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { executeGeneration } from './services/generation'
@@ -11,20 +11,33 @@ import {
   stopLibraryWatchers
 } from './services/file-library-service'
 import { addHistoryRecord, deleteHistoryRecord } from './services/history-service'
-import { openInputDir, pickInputDir, changeInputDir, getInputDir } from './services/input-dir-service'
-import { showItemInFolder, saveFileAs } from './services/file-operations-service'
-import { openOutputDir, pickOutputDir, changeOutputDir, getOutputDir } from './services/output-dir-service'
+import { changeInputDir, getInputDir, openInputDir, pickInputDir } from './services/input-dir-service'
+import { saveFileAs, showItemInFolder } from './services/file-operations-service'
+import {
+  changeOutputDir,
+  getOutputDir,
+  openOutputDir,
+  pickOutputDir
+} from './services/output-dir-service'
+import { applySavedProxyConfig, saveAndApplyProxyConfig } from './services/proxy-session-service'
 import { createProject, deleteProject, ensureFirstProject, renameProject } from './services/project-service'
 import { runStartupMigration } from './services/startup-migration'
+import {
+  downloadUpdate,
+  getUpdateMenuTemplate,
+  initializeUpdateService,
+  scheduleStartupUpdateCheck
+} from './services/update-service'
 import { writeUninstallPaths } from './services/uninstall-paths-writer'
 import { verifyConnection } from './services/verify-service'
+import { loadConfig, saveConfig } from './storage/config-storage'
 import { pathToDisplayUrl, readFileAsBase64 } from './storage/file-cache-service'
 import { loadHistory, saveHistory } from './storage/history-storage'
-import { loadProxyConfig, saveProxyConfig } from './storage/proxy-config-storage'
 import { loadProjects, saveProjects } from './storage/project-storage'
-import { loadConfig, saveConfig } from './storage/config-storage'
+import { loadProxyConfig } from './storage/proxy-config-storage'
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
+
 let mainWindowRef: BrowserWindow | null = null
 
 function getIconPath(): string | undefined {
@@ -34,8 +47,10 @@ function getIconPath(): string | undefined {
 
   const iconPng = join(__dirname, '../../build/icon.png')
   const iconIco = join(__dirname, '../../build/icon.ico')
+
   if (existsSync(iconIco)) return iconIco
   if (existsSync(iconPng)) return iconPng
+
   return undefined
 }
 
@@ -58,10 +73,12 @@ function createMenu(mainWindow: BrowserWindow): void {
           click: async () => {
             const { path: newPath, canceled } = await pickOutputDir()
             if (canceled || !newPath) return
+
             const result = await changeOutputDir(newPath)
             if (result.success) {
               await refreshLibraryWatchers(mainWindow.webContents)
             }
+
             mainWindow.webContents.send('output-dir:changed', result)
           }
         },
@@ -79,11 +96,25 @@ function createMenu(mainWindow: BrowserWindow): void {
           click: async () => {
             const { path: newPath, canceled } = await pickInputDir()
             if (canceled || !newPath) return
+
             const result = await changeInputDir(newPath)
             if (result.success) {
               await refreshLibraryWatchers(mainWindow.webContents)
             }
+
             mainWindow.webContents.send('input-dir:changed', result)
+          }
+        }
+      ]
+    },
+    getUpdateMenuTemplate(),
+    {
+      label: '代理',
+      submenu: [
+        {
+          label: '代理设置',
+          click: () => {
+            mainWindow.webContents.send('proxy:openSettings')
           }
         }
       ]
@@ -92,32 +123,11 @@ function createMenu(mainWindow: BrowserWindow): void {
       label: '帮助',
       submenu: [
         {
-          label: '代理设置',
-          click: () => {
-            mainWindow.webContents.send('proxy:openSettings')
-          }
-        },
-        {
           label: '关于 Vizo',
           click: () => {
-            let version = '未知'
-            try {
-              version = app.getVersion()
-            } catch {
-              // 保持默认值
-            }
-
-            dialog
-              .showMessageBox(mainWindow, {
-                type: 'info',
-                title: '关于 Vizo',
-                message: 'Vizo',
-                detail: `AI 生图 / 改图桌面工具\n\n版本：${version}\n\n阿旺制作`,
-                buttons: ['确定']
-              })
-              .catch(() => {})
+            mainWindow.webContents.send('app:openAbout')
           }
-        }
+        },
       ]
     }
   ]
@@ -152,10 +162,16 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
-    createMenu(mainWindow)
-    startLibraryWatchers(mainWindow.webContents).catch((err) => {
-      console.error('Failed to start library watchers:', err)
-    })
+
+    void (async () => {
+      await initializeUpdateService(mainWindow)
+      createMenu(mainWindow)
+      scheduleStartupUpdateCheck()
+
+      await startLibraryWatchers(mainWindow.webContents).catch((err) => {
+        console.error('Failed to start library watchers:', err)
+      })
+    })()
   })
 
   mainWindow.on('closed', () => {
@@ -166,9 +182,9 @@ function createWindow(): void {
   })
 
   if (isDev && process.env.ELECTRON_RENDERER_URL) {
-    mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
+    void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    void mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
   mainWindowRef = mainWindow
@@ -176,6 +192,7 @@ function createWindow(): void {
 
 ipcMain.handle('ping', () => 'pong')
 ipcMain.handle('get-app-version', () => app.getVersion())
+ipcMain.handle('update:download', () => downloadUpdate())
 
 ipcMain.handle('verify-connection', async (_event, params: { apiKey: string; url?: string }) => {
   return verifyConnection(params)
@@ -191,13 +208,16 @@ ipcMain.handle(
 
 ipcMain.handle('projects:load', async () => {
   const state = await loadProjects()
+
   for (const project of state.projects) {
     project.previewImageUrl = project.previewImagePath
       ? pathToDisplayUrl(project.previewImagePath)
       : null
   }
+
   return state
 })
+
 ipcMain.handle('projects:save', (_event, state: Parameters<typeof saveProjects>[0]) => saveProjects(state))
 ipcMain.handle('project:create', () => createProject())
 ipcMain.handle('project:rename', (_event, projectId: string, name: string) =>
@@ -208,23 +228,29 @@ ipcMain.handle('project:ensureFirst', () => ensureFirstProject())
 
 ipcMain.handle('history:load', async () => {
   const state = await loadHistory()
+
   for (const record of state.records) {
     for (const image of record.inputImages) {
       image.displayUrl = pathToDisplayUrl(image.path)
     }
+
     for (const image of record.outputImages) {
       image.displayUrl = pathToDisplayUrl(image.path)
     }
   }
+
   return state
 })
+
 ipcMain.handle('history:save', (_event, state: Parameters<typeof saveHistory>[0]) => saveHistory(state))
 ipcMain.handle('history:addRecord', async (_event, params: Parameters<typeof addHistoryRecord>[0]) => {
   const result = await addHistoryRecord(params)
+
   if (result.success) {
     emitLibraryChanged('input')
     emitLibraryChanged('output')
   }
+
   return result
 })
 ipcMain.handle('history:deleteRecord', (_event, recordId: string) => deleteHistoryRecord(recordId))
@@ -238,6 +264,7 @@ ipcMain.handle(
       if (!path || typeof path !== 'string') {
         return { success: false, error: '图片路径无效' }
       }
+
       if (!existsSync(path)) {
         return { success: false, error: '图片文件不存在或已被删除' }
       }
@@ -263,11 +290,14 @@ ipcMain.handle('file:saveAs', (_event, path: string, defaultName?: string) =>
 ipcMain.handle('library:list', (_event, scope: 'input' | 'output') => listLibraryImages(scope))
 ipcMain.handle('library:import', async (_event, scope: 'input' | 'output', sourcePaths: string[]) => {
   const result = await importFilesToLibrary(scope, sourcePaths)
+
   if (result.success && result.imported > 0) {
     emitLibraryChanged(scope)
   }
+
   return result
 })
+
 ipcMain.on('library:startDrag', (event, filePath: string) => {
   startLibraryFileDrag(event.sender, filePath)
 })
@@ -295,17 +325,20 @@ ipcMain.handle('input-dir:change', async (_event, newPath: string) => {
 })
 
 ipcMain.handle('proxyConfig:load', () => loadProxyConfig())
-ipcMain.handle('proxyConfig:save', (_event, config: Parameters<typeof saveProxyConfig>[0]) =>
-  saveProxyConfig(config)
+ipcMain.handle('proxyConfig:save', (_event, config: Parameters<typeof saveAndApplyProxyConfig>[0]) =>
+  saveAndApplyProxyConfig(config)
 )
 
 app.whenReady().then(async () => {
   await runStartupMigration()
   await writeUninstallPaths()
+  await applySavedProxyConfig()
   createWindow()
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+    }
   })
 })
 

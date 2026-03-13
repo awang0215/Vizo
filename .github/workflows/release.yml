@@ -94,6 +94,7 @@ jobs:
           files: |
             release/*-Setup.exe
             release/*-Setup.exe.blockmap
+            release/latest.yml
 
       - name: Publish release with generated notes
         if: steps.meta.outputs.has_notes != 'true'
@@ -105,3 +106,4 @@ jobs:
           files: |
             release/*-Setup.exe
             release/*-Setup.exe.blockmap
+            release/latest.yml

@@ -311,7 +311,7 @@ export function FileLibraryPanel() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col p-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="inline-flex rounded-xl border border-border/80 bg-background/72 p-1 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
           {([
@@ -371,7 +371,7 @@ export function FileLibraryPanel() {
         onDragLeave={handleDragLeave}
         onDrop={handleDropImport}
       >
-        <div className="app-scrollbar min-h-0 flex-1 overflow-y-auto p-3 pr-2">
+        <div className="app-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pr-2">
           {loading ? (
             <div className="flex min-h-full items-center justify-center text-sm text-muted-foreground">
               正在加载图片...
@@ -391,7 +391,7 @@ export function FileLibraryPanel() {
               </span>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid content-start grid-cols-3 gap-2">
               {visibleItems.map((item) => (
                 <FileLibraryItem key={item.path} item={item} onHide={handleHide} />
               ))}
