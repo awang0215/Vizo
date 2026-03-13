@@ -118,21 +118,7 @@ npm run build:win
 ```
 
 构建产物默认输出到 `release/` 目录。
-
-## 发布版本
-
-本项目已经配置 GitHub Actions 自动发布流程。
-
-你只需要：
-
-1. 修改 `package.json` 里的版本号
-2. 新增对应版本的更新说明文件，例如 `docs/releases/v0.1.13.md`
-3. 提交代码并打 tag
-4. 推送到 GitHub
-
-详细说明见：
-
-- [docs/RELEASING.md](docs/RELEASING.md)
+[docs/RELEASING.md](docs/RELEASING.md)
 
 ## 说明
 
