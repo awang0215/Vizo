@@ -25,6 +25,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        shell: cmd
         run: npm ci
 
       - name: Resolve release metadata
@@ -48,6 +49,7 @@ jobs:
           "has_notes=$($hasNotes.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
       - name: Build Windows installer
+        shell: cmd
         run: npm run build:win
 
       - name: Publish release with custom notes
