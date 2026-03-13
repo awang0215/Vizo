@@ -49,8 +49,34 @@ jobs:
           "has_notes=$($hasNotes.ToString().ToLower())" >> $env:GITHUB_OUTPUT
 
       - name: Build Windows installer
-        shell: cmd
-        run: npm run build:win
+        shell: pwsh
+        run: |
+          cmd /c "npm run build:win" *>&1 | Tee-Object -FilePath build-win.log
+          exit $LASTEXITCODE
+
+      - name: Print build failure details
+        if: failure()
+        shell: pwsh
+        run: |
+          if (-not (Test-Path build-win.log)) {
+            Write-Output "::error::build-win.log was not generated."
+            exit 0
+          }
+
+          $patterns = Select-String -Path build-win.log -Pattern 'ENOENT|makensis|winCodeSign|failedTask|stackTrace|Error:|cannot move downloaded|Process completed with exit code|code=-4058|spawn '
+
+          if ($patterns) {
+            $patterns | Select-Object -Last 30 | ForEach-Object {
+              $line = $_.Line.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+              Write-Output "::error::$line"
+            }
+            exit 0
+          }
+
+          Get-Content build-win.log -Tail 40 | ForEach-Object {
+            $line = $_.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::warning::$line"
+          }
 
       - name: Publish release with custom notes
         if: steps.meta.outputs.has_notes == 'true'
