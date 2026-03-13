@@ -1,0 +1,11 @@
+node_modules
+out
+.electron-user-data
+dist
+release/
+*.local
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example

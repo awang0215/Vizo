@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 33% 98%;
+    --foreground: 218 27% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 218 27% 18%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 218 27% 18%;
+    --primary: 214 86% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 30% 96%;
+    --secondary-foreground: 218 27% 22%;
+    --muted: 210 26% 95%;
+    --muted-foreground: 215 15% 45%;
+    --accent: 213 34% 94%;
+    --accent-foreground: 218 27% 22%;
+    --destructive: 4 78% 58%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 22% 88%;
+    --input: 214 24% 90%;
+    --ring: 214 86% 55%;
+    --radius: 0.8rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top, rgba(255, 255, 255, 0.86), rgba(248, 250, 252, 0.96) 48%, rgba(243, 246, 250, 1) 100%);
+    font-family: 'SF Pro Display', 'PingFang SC', 'Helvetica Neue', sans-serif;
+  }
+
+  ::selection {
+    @apply bg-primary/15 text-foreground;
+  }
+}
+
+@layer components {
+  .panel-shell {
+    @apply rounded-xl border border-border bg-background shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_28px_rgba(15,23,42,0.05)] backdrop-blur;
+  }
+
+  .section-card {
+    @apply rounded-xl border border-border bg-background shadow-[0_1px_2px_rgba(15,23,42,0.03)] backdrop-blur;
+  }
+
+  .section-title {
+    @apply text-[13px] font-semibold tracking-[0.01em] text-foreground;
+  }
+
+  .section-caption {
+    @apply text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground/90;
+  }
+
+  .interactive-row {
+    @apply rounded-lg border border-border bg-background shadow-[0_1px_1px_rgba(15,23,42,0.02)] transition-all duration-150 hover:border-border hover:bg-accent hover:shadow-[0_4px_16px_rgba(15,23,42,0.04)];
+  }
+
+  .interactive-row-selected {
+    @apply border-primary bg-primary/5 shadow-[0_0_0_1px_rgba(59,130,246,0.08),0_8px_20px_rgba(59,130,246,0.08)];
+  }
+
+  .empty-state-card {
+    @apply rounded-xl border border-dashed border-border bg-muted/30 px-4 py-4 text-sm leading-6 text-muted-foreground;
+  }
+
+  .soft-toolbar-btn {
+    @apply inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .thumbnail-delete-btn {
+    @apply absolute right-1.5 top-1.5 inline-flex items-center justify-center rounded-full border border-white/85 bg-white/95 text-destructive shadow-[0_6px_16px_rgba(220,38,38,0.18)] transition-all duration-150 hover:scale-105 hover:bg-destructive hover:text-white;
+  }
+
+  .app-scrollbar {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.24) transparent;
+  }
+
+  .app-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.22);
+    background-clip: padding-box;
+  }
+
+  .app-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.34);
+    background-clip: padding-box;
+  }
+}
