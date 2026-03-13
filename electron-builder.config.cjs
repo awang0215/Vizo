@@ -42,6 +42,7 @@ module.exports = {
 
   win: {
     ...(iconFile && { icon: iconFile }),
+    ...(process.env.CI ? { signAndEditExecutable: false } : {}),
     forceCodeSigning: false,
     sign: null,
     target: [

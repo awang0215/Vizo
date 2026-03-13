@@ -10,9 +10,9 @@
     "setup": "cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ npm install",
     "dev": "cross-env ELECTRON_USER_DATA=./.electron-user-data electron-vite dev",
     "build": "electron-vite build",
-    "build:win": "node scripts/generate-icon.js && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --config electron-builder.config.cjs",
-    "build:win:dir": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --dir --config electron-builder.config.cjs",
-    "build:win:signed": "npm run build && electron-builder --win --config electron-builder.config.cjs",
+    "build:win": "node scripts/generate-icon.js && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --publish never --config electron-builder.config.cjs",
+    "build:win:dir": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --dir --publish never --config electron-builder.config.cjs",
+    "build:win:signed": "npm run build && electron-builder --win --publish never --config electron-builder.config.cjs",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit"
   },
